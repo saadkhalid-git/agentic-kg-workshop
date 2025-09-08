@@ -56,13 +56,14 @@ class AgentCaller:
                 print(f"  [Event] Author: {event.author}, Type: {type(event).__name__}, Final: {event.is_final_response()}, Content: {event.content}")
 
             # Key Concept: is_final_response() marks the concluding message for the turn.
-            if event.is_final_response() and event.author == self.agent.name:
+            if event.is_final_response():
                 if event.content and event.content.parts:
                     # Assuming text response in the first part
                     final_response_text = event.content.parts[0].text
                 elif event.actions and event.actions.escalate: # Handle potential errors/escalations
                     final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
-                break # Stop processing events once the final response is found
+                if event.author == self.agent.name:
+                    break # Stop processing events once the final response is found
 
 
         self.session = self.runner.session_service.get_session(app_name=self.runner.app_name, user_id=self.user_id, session_id=self.session_id)
