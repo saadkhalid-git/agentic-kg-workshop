@@ -7,9 +7,8 @@ from typing import Dict, Any
 
 from google.adk.tools import ToolContext
 
-from neo4j_for_adk import graphdb,tool_success, tool_error
-
-from helper import get_neo4j_import_dir
+from notebooks.neo4j_for_adk import graphdb, tool_success, tool_error
+from notebooks.helper import get_neo4j_import_dir
 
 def get_approved_user_goal(tool_context: ToolContext):
     """Returns the user's goal, which is a dictionary containing the kind of graph and its description."""

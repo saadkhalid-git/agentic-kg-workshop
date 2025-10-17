@@ -1,0 +1,4 @@
+# Additional requirements for the automated pipeline
+# Add these to the main requirements.txt
+
+python-Levenshtein==0.25.1  # For entity resolution (Jaro-Winkler similarity)

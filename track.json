@@ -1,0 +1,288 @@
+{
+  "project": "Agentic Knowledge Graph Workshop",
+  "version": "1.0.0",
+  "last_updated": "2024-01-10",
+  "purpose": "Multi-agent system for knowledge graph construction from mixed data sources",
+  "technology_stack": {
+    "framework": "Google ADK (Agent Development Kit)",
+    "database": "Neo4j",
+    "llm": "OpenAI GPT-4o",
+    "embeddings": "text-embedding-3-large (3072 dimensions)",
+    "graph_rag": "neo4j-graphrag",
+    "orchestration": "LangChain + LangGraph"
+  },
+  "architecture": {
+    "graphs": [
+      {
+        "name": "Domain Graph",
+        "source": "CSV files",
+        "entities": ["Product", "Assembly", "Part", "Supplier"],
+        "relationships": ["CONTAINS", "IS_PART_OF", "SUPPLIED_BY"],
+        "purpose": "Structured supply chain data"
+      },
+      {
+        "name": "Subject Graph",
+        "source": "Markdown reviews",
+        "entities": ["Product", "Issue", "Feature", "User", "Location"],
+        "relationships": ["HAS_ISSUE", "INCLUDES_FEATURE", "REVIEWED_BY", "USED_IN_LOCATION"],
+        "purpose": "Extracted knowledge from text"
+      },
+      {
+        "name": "Lexical Graph",
+        "source": "Text chunks",
+        "entities": ["Document", "Chunk"],
+        "relationships": ["HAS_CHUNK", "NEXT_CHUNK", "MENTIONED_IN"],
+        "purpose": "Semantic search and RAG"
+      }
+    ],
+    "inter_graph_relationships": ["CORRESPONDS_TO"]
+  },
+  "workflow_phases": [
+    {
+      "phase": 1,
+      "name": "User Intent",
+      "agent": "user_intent_agent",
+      "input": "User conversation",
+      "output": "approved_user_goal",
+      "human_intervention": true
+    },
+    {
+      "phase": 2,
+      "name": "File Selection",
+      "agent": "file_suggestion_agent",
+      "input": "approved_user_goal",
+      "output": "approved_files",
+      "human_intervention": true
+    },
+    {
+      "phase": 3,
+      "name": "Schema Design",
+      "agent": "schema_proposal_coordinator",
+      "sub_agents": ["schema_proposal_agent", "schema_critic_agent"],
+      "input": "approved_files",
+      "output": "approved_construction_plan",
+      "pattern": "critic_loop",
+      "human_intervention": true
+    },
+    {
+      "phase": 4,
+      "name": "Domain Graph Construction",
+      "agent": "StructuredDataAgent",
+      "input": "approved_construction_plan",
+      "output": "domain_graph",
+      "human_intervention": false
+    },
+    {
+      "phase": 5,
+      "name": "Subject Graph Construction",
+      "agent": "UnstructuredDataAgent",
+      "input": ["approved_files", "entity_types", "fact_types"],
+      "output": "subject_graph",
+      "human_intervention": false
+    },
+    {
+      "phase": 6,
+      "name": "Entity Resolution",
+      "agent": "EntityResolutionAgent",
+      "input": ["domain_graph", "subject_graph"],
+      "output": "correspondence_relationships",
+      "human_intervention": false
+    },
+    {
+      "phase": 7,
+      "name": "RAG Q&A",
+      "agent": "LangChainRAGAgent",
+      "input": "user_question",
+      "output": "answer",
+      "strategies": ["vector_search", "fulltext_search", "cypher_generation", "langgraph_workflow"],
+      "human_intervention": false
+    }
+  ],
+  "agents": {
+    "user_intent_agent": {
+      "responsibility": "Clarify user's knowledge graph goals",
+      "tools": ["set_perceived_user_goal", "approve_perceived_user_goal"],
+      "pattern": "human_in_the_loop"
+    },
+    "file_suggestion_agent": {
+      "responsibility": "Select relevant data files",
+      "tools": ["list_available_files", "sample_file", "set_suggested_files", "approve_suggested_files"],
+      "pattern": "content_aware_selection"
+    },
+    "schema_proposal_agent": {
+      "responsibility": "Generate graph schema",
+      "tools": ["propose_node_construction", "propose_relationship_construction", "search_file"],
+      "pattern": "schema_generation"
+    },
+    "schema_critic_agent": {
+      "responsibility": "Validate and critique schema",
+      "tools": ["get_proposed_construction_plan", "sample_file", "search_file"],
+      "pattern": "validation"
+    },
+    "StructuredDataAgent": {
+      "responsibility": "Import CSV data to Neo4j",
+      "methods": ["create_uniqueness_constraint", "load_nodes_from_csv", "import_relationships"],
+      "pattern": "batch_import"
+    },
+    "UnstructuredDataAgent": {
+      "responsibility": "Extract entities from text",
+      "methods": ["create_entity_schema", "process_file", "create_text_indexes"],
+      "pattern": "llm_extraction"
+    },
+    "EntityResolutionAgent": {
+      "responsibility": "Link entities across graphs",
+      "methods": ["calculate_similarity", "resolve_entities", "create_correspondence"],
+      "algorithm": "jaro_winkler",
+      "threshold": 0.8
+    },
+    "LangChainRAGAgent": {
+      "responsibility": "Answer questions using graph",
+      "methods": ["vector_search", "fulltext_search", "cypher_generation", "create_langgraph_workflow"],
+      "pattern": "multi_strategy_retrieval"
+    }
+  },
+  "data_sources": {
+    "csv_files": [
+      "products.csv",
+      "assemblies.csv",
+      "parts.csv",
+      "part_supplier_mapping.csv",
+      "suppliers.csv"
+    ],
+    "markdown_files": [
+      "product_reviews/gothenburg_table_reviews.md",
+      "product_reviews/helsingborg_dresser_reviews.md",
+      "product_reviews/jonkoping_coffee_table_reviews.md",
+      "product_reviews/linkoping_bed_reviews.md",
+      "product_reviews/malmo_desk_reviews.md",
+      "product_reviews/norrkoping_nightstand_reviews.md",
+      "product_reviews/orebro_lamp_reviews.md",
+      "product_reviews/stockholm_chair_reviews.md",
+      "product_reviews/uppsala_sofa_reviews.md",
+      "product_reviews/vasteras_bookshelf_reviews.md"
+    ]
+  },
+  "key_patterns": {
+    "agent_composition": {
+      "description": "How to create an ADK agent",
+      "components": ["name", "model", "instruction", "tools", "sub_agents"]
+    },
+    "state_management": {
+      "description": "Session state persistence across agents",
+      "mechanism": "tool_context.state"
+    },
+    "critic_loop": {
+      "description": "Multi-agent refinement pattern",
+      "flow": "propose -> critique -> refine -> validate"
+    },
+    "human_in_the_loop": {
+      "description": "Approval checkpoints for critical decisions",
+      "pattern": "perceive -> present -> approve"
+    },
+    "error_handling": {
+      "description": "Consistent error reporting",
+      "format": "tool_success/tool_error"
+    }
+  },
+  "capabilities": {
+    "graph_construction": {
+      "structured_data": "CSV import with constraints",
+      "unstructured_data": "LLM extraction with schema guidance",
+      "entity_resolution": "Fuzzy matching across graphs"
+    },
+    "query_answering": {
+      "vector_search": "Semantic similarity",
+      "fulltext_search": "Keyword matching",
+      "graph_traversal": "Cypher queries",
+      "reasoning": "LangGraph workflows"
+    }
+  },
+  "use_cases": {
+    "primary": "Supply Chain Analysis",
+    "queries": [
+      "Which suppliers provide parts for Product X?",
+      "What quality issues are reported?",
+      "Find single points of failure in supply chain",
+      "Identify cost optimization opportunities"
+    ]
+  },
+  "performance": {
+    "batch_size": 1000,
+    "vector_dimensions": 3072,
+    "similarity_threshold": 0.8,
+    "max_chunk_size": 100,
+    "temperature": 0
+  },
+  "configuration": {
+    "environment_variables": [
+      "OPENAI_API_KEY",
+      "NEO4J_URI",
+      "NEO4J_USERNAME",
+      "NEO4J_PASSWORD",
+      "NEO4J_IMPORT_DIR"
+    ],
+    "neo4j_plugins": ["APOC", "GenAI"],
+    "python_version": "3.9+",
+    "key_dependencies": [
+      "google-adk==1.5.0",
+      "neo4j==5.28.1",
+      "neo4j-graphrag==1.7.0",
+      "openai==1.93.0",
+      "langchain",
+      "spacy==3.8.7"
+    ]
+  },
+  "files_structure": {
+    "notebooks": {
+      "intro": "1-intro_to_adk.ipynb",
+      "user_intent": "2-user_intent.ipynb",
+      "file_selection": "3-file_suggestions.ipynb",
+      "schema_design": "4-schema_proposal.ipynb",
+      "kg_construction": "5-kg-construction.ipynb",
+      "platform_specific": ["8.1-kg-construction-I-platform.ipynb", "8.2-kg-construction-II-platform.ipynb"]
+    },
+    "python_modules": {
+      "helpers": "helper.py",
+      "neo4j_wrapper": "neo4j_for_adk.py",
+      "tools": "tools.py",
+      "agents": {
+        "structured": "structured_data_agent.py",
+        "unstructured": "unstructured_data_agent.py",
+        "resolution": "entity_resolution_agent.py",
+        "rag": "langchain_rag_agent.py"
+      },
+      "orchestrator": "supply_chain_qa_system.py"
+    }
+  },
+  "insights": {
+    "strengths": [
+      "Modular architecture",
+      "Multi-agent collaboration",
+      "Schema-guided extraction",
+      "Comprehensive error handling",
+      "State persistence"
+    ],
+    "challenges": [
+      "LLM consistency across runs",
+      "Entity boundary ambiguity",
+      "Scale limitations",
+      "Debugging complexity"
+    ],
+    "best_practices": [
+      "Single responsibility per agent",
+      "Explicit approval steps",
+      "Schema-first approach",
+      "Batch processing",
+      "Temperature=0 for consistency"
+    ]
+  },
+  "automation_strategy": {
+    "goal": "Remove human intervention for demo pipeline",
+    "approach": "Predefined configurations and thresholds",
+    "default_goal": "Supply chain analysis with quality tracking",
+    "default_files": "All CSV and markdown files",
+    "default_schema": "Products, Parts, Suppliers with relationships",
+    "default_entity_types": ["Product", "Issue", "Feature", "User"],
+    "default_similarity_threshold": 0.8
+  }
+}
